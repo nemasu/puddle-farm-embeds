@@ -3,10 +3,6 @@ use tokio;
 
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serenity::{
-    all::CreateEmbedFooter,
-    builder::CreateEmbed,
-};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Player {
@@ -49,48 +45,69 @@ struct TopRating {
 }
 
 async fn player(
-  Path((player_id, char_id)): Path<(i64, String)>,
+    Path((player_id, char_id)): Path<(i64, String)>,
 ) -> Result<Json<String>, (StatusCode, String)> {
-  let url = format!("https://puddle.farm/api/player/{}", player_id);
-  let response = reqwest::get(&url)
-      .await
-      .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-  let body = response
-      .text()
-      .await
-      .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let url = format!("https://puddle.farm/api/player/{}", player_id);
+    let response = reqwest::get(&url).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("E1 {}", e.to_string()),
+        )
+    })?;
+    let body = response.text().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("E2 {}", e.to_string()),
+        )
+    })?;
 
-  let player: Player = serde_json::from_str(&body)
-      .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let player: Player = serde_json::from_str(&body).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("E3 {} : {}", e.to_string(), body),
+        )
+    })?;
 
-  let rating = player
-      .ratings
-      .iter()
-      .find(|r| r.char_short == char_id)
-      .ok_or((StatusCode::NOT_FOUND, "Character not found".to_string()))?;
+    let rating = player
+        .ratings
+        .iter()
+        .find(|r| r.char_short == char_id)
+        .ok_or((StatusCode::NOT_FOUND, "Character not found".to_string()))?;
 
-  let rating_str = format!("{:.1}", rating.rating);
-  let deviation_str = format!("{:.1}", rating.deviation);
+    let rating_str = format!("{:.1}", rating.rating);
+    let deviation_str = format!("{:.1}", rating.deviation);
 
-  let footer = CreateEmbedFooter::new("puddle.farm is open source");
-  let embed = CreateEmbed::default()
-      .title(player.name)
-      .description("Ratings for Guilty Gear Strive")
-      .color(0x9f_2b_68)
-      .field(rating.character.clone(), format!("{} ±{}", rating_str, deviation_str), true)
-      .field("Games", rating.match_count.to_string(), true)
-      .footer(footer);
+    let embed_json = json!({
+        "title": player.name,
+        "description": "Ratings for Guilty Gear Strive",
+        "color": 0x9f2b68,
+        "fields": [
+            {
+                "name": rating.character.clone(),
+                "value": format!("{} ±{}", rating_str, deviation_str),
+                "inline": true
+            },
+            {
+                "name": "Games",
+                "value": rating.match_count.to_string(),
+                "inline": true
+            }
+        ],
+        "footer": {
+            "text": "puddle.farm is open source"
+        }
+    });
 
-  let embed_json = json!({ "embeds": [embed] }); // Discord expects an array of embeds
-  let embed_json = serde_json::to_string(&embed_json).unwrap();
-  Ok(Json(embed_json))
+    let embed_json = json!({ "embeds": [embed_json] }); // Discord expects an array of embeds
+    let embed_json = serde_json::to_string(&embed_json).unwrap();
+    Ok(Json(embed_json))
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-  let app = Router::new().route("/player/:id/:char_id", get(player));
+    let app = Router::new().route("/player/:player_id/:char_id", get(player));
 
-  let listener = tokio::net::TcpListener::bind("0.0.0.0:8002").await?;
-  axum::serve(listener, app).await?;
-  Ok(())
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8002").await?;
+    axum::serve(listener, app).await?;
+    Ok(())
 }
