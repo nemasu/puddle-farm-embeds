@@ -107,7 +107,7 @@ async fn player(
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .header("Content-Type", "text/html")
+        .header("Content-Type", "text/html; charset=utf-8")
         .body(html)
         .unwrap())
 }
