@@ -2,7 +2,7 @@ use axum::{extract::Path, http::StatusCode, routing::get, Json, Router};
 use tokio;
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Player {
@@ -46,7 +46,7 @@ struct TopRating {
 
 async fn player(
     Path((player_id, char_id)): Path<(i64, String)>,
-) -> Result<Json<String>, (StatusCode, String)> {
+) -> Result<Json<Value>, (StatusCode, String)> {
     let url = format!("https://puddle.farm/api/player/{}", player_id);
     let response = reqwest::get(&url).await.map_err(|e| {
         (
@@ -99,7 +99,6 @@ async fn player(
     });
 
     let embed_json = json!({ "embeds": [embed_json] }); // Discord expects an array of embeds
-    let embed_json = serde_json::to_string(&embed_json).unwrap();
     Ok(Json(embed_json))
 }
 
