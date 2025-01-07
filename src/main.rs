@@ -1,8 +1,12 @@
-use axum::{extract::Path, http::StatusCode, routing::get, Json, Router};
+use axum::{
+    extract::Path,
+    http::{Response, StatusCode},
+    routing::get,
+    Router,
+};
 use tokio;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Player {
@@ -46,7 +50,7 @@ struct TopRating {
 
 async fn player(
     Path((player_id, char_id)): Path<(i64, String)>,
-) -> Result<Json<Value>, (StatusCode, String)> {
+) -> Result<Response<String>, (StatusCode, String)> {
     let url = format!("https://puddle.farm/api/player/{}", player_id);
     let response = reqwest::get(&url).await.map_err(|e| {
         (
@@ -77,29 +81,35 @@ async fn player(
     let rating_str = format!("{:.1}", rating.rating);
     let deviation_str = format!("{:.1}", rating.deviation);
 
-    let embed_json = json!({
-        "title": player.name,
-        "description": "Ratings for Guilty Gear Strive",
-        "color": 0x9f2b68,
-        "fields": [
-            {
-                "name": rating.character.clone(),
-                "value": format!("{} ±{}", rating_str, deviation_str),
-                "inline": true
-            },
-            {
-                "name": "Games",
-                "value": rating.match_count.to_string(),
-                "inline": true
-            }
-        ],
-        "footer": {
-            "text": "puddle.farm is open source"
-        }
-    });
+    let html = format!(
+        r#"<!DOCTYPE html>
+    <html>
+    <head>
+        <meta property="og:title" content="{} - {}" />
+        <meta property="og:type" content="website" />
+        <meta property="og:description" content="Rating: {} ±{} | Games: {}" />
+        <meta property="og:site_name" content="puddle.farm" />
+        <meta property="og:url" content="https://puddle.farm/player/{}/{}" />
+    </head>
+    <body>
+        <p>Player stats for {}</p>
+    </body>
+    </html>"#,
+        player.name,
+        rating.character,
+        rating_str,
+        deviation_str,
+        rating.match_count,
+        player_id,
+        rating.char_short,
+        player.name
+    );
 
-    let embed_json = json!({ "embeds": [embed_json] }); // Discord expects an array of embeds
-    Ok(Json(embed_json))
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "text/html")
+        .body(html)
+        .unwrap())
 }
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
