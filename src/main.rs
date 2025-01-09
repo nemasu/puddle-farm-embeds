@@ -103,8 +103,8 @@ async fn player(
         rating.match_count,
         player_id,
         rating.char_short,
-        player.name,
         player_id,
+        player.name,
     );
 
     Ok(Response::builder()
