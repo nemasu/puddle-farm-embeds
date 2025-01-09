@@ -16,7 +16,13 @@ struct Player {
     platform: String,
     status: String,
     top_global: u32,
-    tags: Vec<String>,
+    tags: Vec<Tag>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Tag {
+    tag: String,
+    style: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
