@@ -90,6 +90,7 @@ async fn player(
         <meta property="og:description" content="Rating: {} ±{} | Games: {}" />
         <meta property="og:site_name" content="puddle.farm" />
         <meta property="og:url" content="https://puddle.farm/player/{}/{}" />
+        <meta property="og:image" content="https://puddle.farm/api/avatar/{}" />
     </head>
     <body>
         <p>Player stats for {}</p>
@@ -102,7 +103,8 @@ async fn player(
         rating.match_count,
         player_id,
         rating.char_short,
-        player.name
+        player.name,
+        player_id,
     );
 
     Ok(Response::builder()
