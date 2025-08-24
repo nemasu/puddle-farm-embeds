@@ -14,7 +14,6 @@ struct Player {
     name: String,
     ratings: Vec<Rating>,
     platform: String,
-    status: String,
     top_global: u32,
     tags: Vec<Tag>,
 }
@@ -28,7 +27,6 @@ struct Tag {
 #[derive(Serialize, Deserialize, Debug)]
 struct Rating {
     rating: f64,
-    deviation: f64,
     char_short: String,
     character: String,
     match_count: u32,
@@ -44,14 +42,12 @@ struct TopDefeated {
     name: String,
     char_short: String,
     value: f64,
-    deviation: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TopRating {
     timestamp: String,
     value: f64,
-    deviation: f64,
 }
 
 async fn player(
@@ -85,7 +81,6 @@ async fn player(
         .ok_or((StatusCode::NOT_FOUND, "Character not found".to_string()))?;
 
     let rating_str = format!("{:.1}", rating.rating);
-    let deviation_str = format!("{:.1}", rating.deviation);
 
     let html = format!(
         r#"<!DOCTYPE html>
@@ -93,7 +88,7 @@ async fn player(
     <head>
         <meta property="og:title" content="{} - {}" />
         <meta property="og:type" content="website" />
-        <meta property="og:description" content="Rating: {} ±{} | Games: {}" />
+        <meta property="og:description" content="Rating: {} | Games: {}" />
         <meta property="og:site_name" content="puddle.farm" />
         <meta property="og:url" content="https://puddle.farm/player/{}/{}" />
         <meta property="og:image" content="https://puddle.farm/api/avatar/{}" />
@@ -105,7 +100,6 @@ async fn player(
         player.name,
         rating.character,
         rating_str,
-        deviation_str,
         rating.match_count,
         player_id,
         rating.char_short,
