@@ -26,7 +26,7 @@ struct Tag {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Rating {
-    rating: f64,
+    rating: i64,
     char_short: String,
     character: String,
     match_count: u32,
@@ -48,6 +48,48 @@ struct TopDefeated {
 struct TopRating {
     timestamp: String,
     value: f64,
+}
+
+#[derive(Debug)]
+struct RankInfo {
+    name: String,
+}
+
+fn get_rank_from_rating(rating: i64) -> RankInfo {
+    let rank_thresholds = [
+        (45000, "Vanquisher"),
+        (40800, "Diamond 3"),
+        (36000, "Diamond 2"),
+        (32400, "Diamond 1"),
+        (28400, "Platinum 3"),
+        (24400, "Platinum 2"),
+        (20400, "Platinum 1"),
+        (18000, "Gold 3"),
+        (15600, "Gold 2"),
+        (13200, "Gold 1"),
+        (11000, "Silver 3"),
+        (8800, "Silver 2"),
+        (6600, "Silver 1"),
+        (5400, "Bronze 3"),
+        (4200, "Bronze 2"),
+        (3000, "Bronze 1"),
+        (2000, "Iron 3"),
+        (1000, "Iron 2"),
+        (1, "Iron 1"),
+        (0, "Placement"),
+    ];
+
+    for (threshold, name) in rank_thresholds.iter() {
+        if rating >= *threshold {
+            return RankInfo {
+                name: name.to_string(),
+            };
+        }
+    }
+
+    RankInfo {
+        name: "Placement".to_string(),
+    }
 }
 
 async fn player(
@@ -80,7 +122,12 @@ async fn player(
         .find(|r| r.char_short == char_id)
         .ok_or((StatusCode::NOT_FOUND, "Character not found".to_string()))?;
 
-    let rating_str = format!("{:.1}", rating.rating);
+    let rank_info = get_rank_from_rating(rating.rating);
+    let rating_str = if rank_info.name == "Vanquisher" {
+        format!("{} DR", rating.rating - 10000000)
+    } else {
+        format!("{} RP", rating.rating)
+    };
 
     let html = format!(
         r#"<!DOCTYPE html>
@@ -88,7 +135,7 @@ async fn player(
     <head>
         <meta property="og:title" content="{} - {}" />
         <meta property="og:type" content="website" />
-        <meta property="og:description" content="Rating: {} | Games: {}" />
+        <meta property="og:description" content="{}, {} | Games: {}" />
         <meta property="og:site_name" content="puddle.farm" />
         <meta property="og:url" content="https://puddle.farm/player/{}/{}" />
         <meta property="og:image" content="https://puddle.farm/api/avatar/{}" />
@@ -99,6 +146,7 @@ async fn player(
     </html>"#,
         player.name,
         rating.character,
+        rank_info.name,
         rating_str,
         rating.match_count,
         player_id,
